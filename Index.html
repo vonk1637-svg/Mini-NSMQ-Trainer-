@@ -1,125 +1,449 @@
-from pathlib import Path
-import zipfile, shutil
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mini NSMQ Trainer</title>
 
-html_src = Path("/mnt/data/mini_nsmq_trainer_beginner_25s.html")
-project = Path("/mnt/data/MiniNSMQTrainerAndroid")
-if project.exists():
-    shutil.rmtree(project)
+<style>
+* {
+    box-sizing: border-box;
+}
 
-(project / "app/src/main/assets").mkdir(parents=True)
-(project / "app/src/main/java/com/example/mininsmqtrainer").mkdir(parents=True)
-(project / "app/src/main/res/values").mkdir(parents=True)
-(project / "app/src/main/res/xml").mkdir(parents=True)
+body {
+    margin: 0;
+    font-family: Arial, sans-serif;
+    background: #0f172a;
+    color: white;
+}
 
-shutil.copy2(html_src, project / "app/src/main/assets/index.html")
+.container {
+    max-width: 600px;
+    margin: auto;
+    padding: 20px;
+}
 
-(project / "settings.gradle").write_text("""pluginManagement {
-    repositories {
-        google()
-        mavenCentral()
-        gradlePluginPortal()
+h1 {
+    text-align: center;
+    margin-bottom: 5px;
+}
+
+.subtitle {
+    text-align: center;
+    color: #94a3b8;
+    margin-bottom: 25px;
+}
+
+.card {
+    background: #1e293b;
+    border-radius: 18px;
+    padding: 22px;
+    box-shadow: 0 8px 25px rgba(0,0,0,0.3);
+}
+
+.top {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 15px;
+    font-weight: bold;
+}
+
+.timer {
+    color: #38bdf8;
+}
+
+.question {
+    font-size: 20px;
+    line-height: 1.5;
+    margin: 20px 0;
+}
+
+.options button {
+    width: 100%;
+    padding: 15px;
+    margin: 7px 0;
+    border: none;
+    border-radius: 12px;
+    background: #334155;
+    color: white;
+    font-size: 16px;
+    text-align: left;
+}
+
+.options button:active {
+    transform: scale(0.98);
+}
+
+input {
+    width: 100%;
+    padding: 15px;
+    border-radius: 12px;
+    border: 2px solid #475569;
+    background: #0f172a;
+    color: white;
+    font-size: 18px;
+    margin-bottom: 12px;
+}
+
+.main-btn {
+    width: 100%;
+    padding: 15px;
+    border: none;
+    border-radius: 12px;
+    background: #22c55e;
+    color: white;
+    font-size: 17px;
+    font-weight: bold;
+}
+
+.result {
+    margin-top: 15px;
+    padding: 12px;
+    border-radius: 10px;
+    text-align: center;
+    font-weight: bold;
+}
+
+.correct {
+    background: #166534;
+}
+
+.wrong {
+    background: #991b1b;
+}
+
+.score {
+    text-align: center;
+    margin-top: 20px;
+    color: #cbd5e1;
+}
+
+.progress {
+    height: 8px;
+    background: #334155;
+    border-radius: 10px;
+    overflow: hidden;
+    margin-bottom: 20px;
+}
+
+.progress-bar {
+    height: 100%;
+    background: #38bdf8;
+    width: 100%;
+}
+</style>
+</head>
+
+<body>
+
+<div class="container">
+
+<h1>🧠 Mini NSMQ Trainer</h1>
+
+<div class="subtitle">
+Beginner Mode • 25 Seconds
+</div>
+
+<div class="card">
+
+<div class="top">
+    <span id="questionNumber">Question 1</span>
+    <span class="timer">⏱️ <span id="time">25</span>s</span>
+</div>
+
+<div class="progress">
+    <div class="progress-bar" id="progressBar"></div>
+</div>
+
+<div class="question" id="question">
+Loading question...
+</div>
+
+<div id="answerArea"></div>
+
+<div id="result"></div>
+
+<button class="main-btn" id="nextButton" onclick="nextQuestion()" style="display:none;">
+Next Question ➜
+</button>
+
+</div>
+
+<div class="score">
+Score: <span id="score">0</span> / <span id="answered">0</span>
+</div>
+
+</div>
+
+<script>
+
+const questions = [
+
+{
+    type: "mcq",
+    question: "What is the chemical symbol for oxygen?",
+    options: ["A. Ox", "B. O", "C. C", "D. Og"],
+    answer: "B"
+},
+
+{
+    type: "mcq",
+    question: "Which planet is closest to the Sun?",
+    options: ["A. Earth", "B. Venus", "C. Mercury", "D. Mars"],
+    answer: "C"
+},
+
+{
+    type: "mcq",
+    question: "What is the SI unit of force?",
+    options: ["A. Joule", "B. Watt", "C. Newton", "D. Pascal"],
+    answer: "C"
+},
+
+{
+    type: "mcq",
+    question: "Which organ pumps blood around the human body?",
+    options: ["A. Brain", "B. Heart", "C. Liver", "D. Kidney"],
+    answer: "B"
+},
+
+{
+    type: "mcq",
+    question: "What is 12 × 8?",
+    options: ["A. 86", "B. 96", "C. 108", "D. 88"],
+    answer: "B"
+},
+
+{
+    type: "mcq",
+    question: "Which gas do plants mainly use during photosynthesis?",
+    options: ["A. Oxygen", "B. Nitrogen", "C. Carbon dioxide", "D. Hydrogen"],
+    answer: "C"
+},
+
+{
+    type: "mcq",
+    question: "What is the boiling point of water at standard atmospheric pressure?",
+    options: ["A. 50°C", "B. 75°C", "C. 100°C", "D. 150°C"],
+    answer: "C"
+},
+
+{
+    type: "mcq",
+    question: "Which of these is a prime number?",
+    options: ["A. 21", "B. 27", "C. 29", "D. 33"],
+    answer: "C"
+},
+
+{
+    type: "number",
+    question: "Calculate: 15 + 27",
+    answer: "42"
+},
+
+{
+    type: "number",
+    question: "Calculate: 9 × 7",
+    answer: "63"
+},
+
+{
+    type: "mcq",
+    question: "Which part of a plant absorbs water from the soil?",
+    options: ["A. Flower", "B. Leaf", "C. Root", "D. Fruit"],
+    answer: "C"
+},
+
+{
+    type: "mcq",
+    question: "What is the largest organ of the human body?",
+    options: ["A. Heart", "B. Skin", "C. Liver", "D. Brain"],
+    answer: "B"
+},
+
+{
+    type: "number",
+    question: "What is 100 ÷ 4?",
+    answer: "25"
+},
+
+{
+    type: "mcq",
+    question: "Which force pulls objects towards the Earth?",
+    options: ["A. Friction", "B. Magnetism", "C. Gravity", "D. Tension"],
+    answer: "C"
+},
+
+{
+    type: "mcq",
+    question: "What is the chemical symbol for gold?",
+    options: ["A. Go", "B. Gd", "C. Au", "D. Ag"],
+    answer: "C"
+}
+
+];
+
+let current = 0;
+let score = 0;
+let answered = 0;
+let timeLeft = 25;
+let timer;
+let locked = false;
+
+function loadQuestion() {
+
+    clearInterval(timer);
+
+    locked = false;
+    timeLeft = 25;
+
+    document.getElementById("time").textContent = timeLeft;
+    document.getElementById("result").innerHTML = "";
+    document.getElementById("nextButton").style.display = "none";
+
+    const q = questions[current];
+
+    document.getElementById("questionNumber").textContent =
+        "Question " + (current + 1);
+
+    document.getElementById("question").textContent = q.question;
+
+    const area = document.getElementById("answerArea");
+
+    area.innerHTML = "";
+
+    if (q.type === "mcq") {
+
+        const options = document.createElement("div");
+        options.className = "options";
+
+        q.options.forEach(option => {
+
+            const button = document.createElement("button");
+
+            button.textContent = option;
+
+            button.onclick = () => checkAnswer(
+                option.charAt(0)
+            );
+
+            options.appendChild(button);
+        });
+
+        area.appendChild(options);
+
+    } else {
+
+        const input = document.createElement("input");
+
+        input.type = "text";
+        input.inputMode = "text";
+        input.placeholder = "Type your answer";
+
+        const submit = document.createElement("button");
+
+        submit.className = "main-btn";
+        submit.textContent = "Submit Answer";
+
+        submit.onclick = () => {
+            checkAnswer(input.value.trim());
+        };
+
+        area.appendChild(input);
+        area.appendChild(submit);
     }
+
+    startTimer();
 }
-dependencyResolutionManagement {
-    repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
-    repositories {
-        google()
-        mavenCentral()
+
+function startTimer() {
+
+    timer = setInterval(() => {
+
+        timeLeft--;
+
+        document.getElementById("time").textContent = timeLeft;
+
+        document.getElementById("progressBar").style.width =
+            (timeLeft / 25 * 100) + "%";
+
+        if (timeLeft <= 0) {
+
+            clearInterval(timer);
+
+            if (!locked) {
+                checkAnswer("");
+            }
+        }
+
+    }, 1000);
+}
+
+function checkAnswer(userAnswer) {
+
+    if (locked) return;
+
+    locked = true;
+
+    clearInterval(timer);
+
+    answered++;
+
+    const q = questions[current];
+
+    const result = document.getElementById("result");
+
+    if (
+        userAnswer.toUpperCase() ===
+        q.answer.toUpperCase()
+    ) {
+
+        score++;
+
+        result.className = "result correct";
+        result.innerHTML = "✅ Correct!";
+
+    } else {
+
+        result.className = "result wrong";
+        result.innerHTML =
+            "❌ Wrong! Correct answer: " + q.answer;
     }
-}
-rootProject.name = "MiniNSMQTrainer"
-include(":app")
-""")
 
-(project / "build.gradle").write_text("""plugins {
-    id 'com.android.application' version '8.6.1' apply false
-}
-""")
+    document.getElementById("score").textContent = score;
+    document.getElementById("answered").textContent = answered;
 
-(project / "app/build.gradle").write_text("""plugins {
-    id 'com.android.application'
+    document.getElementById("nextButton").style.display = "block";
 }
 
-android {
-    namespace 'com.example.mininsmqtrainer'
-    compileSdk 35
+function nextQuestion() {
 
-    defaultConfig {
-        applicationId 'com.example.mininsmqtrainer'
-        minSdk 23
-        targetSdk 35
-        versionCode 1
-        versionName '1.0'
+    current++;
+
+    if (current >= questions.length) {
+
+        document.getElementById("question").textContent =
+            "🎉 Training complete!";
+
+        document.getElementById("answerArea").innerHTML =
+            "<h2 style='text-align:center;'>Final Score: " +
+            score + " / " + questions.length +
+            "</h2>";
+
+        document.getElementById("result").innerHTML =
+            "Great job! Keep practising 💪🏾";
+
+        document.getElementById("nextButton").style.display = "none";
+
+        return;
     }
+
+    loadQuestion();
 }
-""")
 
-(project / "app/src/main/AndroidManifest.xml").write_text("""<manifest xmlns:android="http://schemas.android.com/apk/res/android">
-    <application
-        android:theme="@style/AppTheme"
-        android:label="Mini NSMQ Trainer"
-        android:allowBackup="true"
-        android:supportsRtl="true">
-        <activity
-            android:name=".MainActivity"
-            android:screenOrientation="portrait"
-            android:exported="true">
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
-                <category android:name="android.intent.category.LAUNCHER" />
-            </intent-filter>
-        </activity>
-    </application>
-</manifest>
-""")
+loadQuestion();
 
-(project / "app/src/main/res/values/styles.xml").write_text("""<resources>
-    <style name="AppTheme" parent="android:style/Theme.Material.Light.NoActionBar">
-        <item name="android:fontFamily">sans</item>
-        <item name="android:colorAccent">#111827</item>
-        <item name="android:navigationBarColor">#f4f6f8</item>
-        <item name="android:statusBarColor">#f4f6f8</item>
-        <item name="android:windowLightStatusBar">true</item>
-    </style>
-</resources>
-""")
+</script>
 
-(project / "app/src/main/java/com/example/mininsmqtrainer/MainActivity.java").write_text("""package com.example.mininsmqtrainer;
-
-import android.app.Activity;
-import android.os.Bundle;
-import android.webkit.WebSettings;
-import android.webkit.WebView;
-import android.webkit.WebViewClient;
-
-public class MainActivity extends Activity {
-    @Override
-    protected void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
-
-        WebView webView = new WebView(this);
-        webView.setWebViewClient(new WebViewClient());
-
-        WebSettings settings = webView.getSettings();
-        settings.setJavaScriptEnabled(true);
-        settings.setDomStorageEnabled(true);
-        settings.setBuiltInZoomControls(false);
-        settings.setDisplayZoomControls(false);
-
-        webView.loadUrl("file:///android_asset/index.html");
-        setContentView(webView);
-    }
-}
-""")
-
-zip_path = Path("/mnt/data/MiniNSMQTrainerAndroidProject.zip")
-if zip_path.exists():
-    zip_path.unlink()
-
-with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as z:
-    for p in project.rglob("*"):
-        if p.is_file():
-            z.write(p, p.relative_to(project))
-
-print(zip_path)
-                                                               
+</body>
+</html>
