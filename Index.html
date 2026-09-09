@@ -1,0 +1,125 @@
+from pathlib import Path
+import zipfile, shutil
+
+html_src = Path("/mnt/data/mini_nsmq_trainer_beginner_25s.html")
+project = Path("/mnt/data/MiniNSMQTrainerAndroid")
+if project.exists():
+    shutil.rmtree(project)
+
+(project / "app/src/main/assets").mkdir(parents=True)
+(project / "app/src/main/java/com/example/mininsmqtrainer").mkdir(parents=True)
+(project / "app/src/main/res/values").mkdir(parents=True)
+(project / "app/src/main/res/xml").mkdir(parents=True)
+
+shutil.copy2(html_src, project / "app/src/main/assets/index.html")
+
+(project / "settings.gradle").write_text("""pluginManagement {
+    repositories {
+        google()
+        mavenCentral()
+        gradlePluginPortal()
+    }
+}
+dependencyResolutionManagement {
+    repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+    repositories {
+        google()
+        mavenCentral()
+    }
+}
+rootProject.name = "MiniNSMQTrainer"
+include(":app")
+""")
+
+(project / "build.gradle").write_text("""plugins {
+    id 'com.android.application' version '8.6.1' apply false
+}
+""")
+
+(project / "app/build.gradle").write_text("""plugins {
+    id 'com.android.application'
+}
+
+android {
+    namespace 'com.example.mininsmqtrainer'
+    compileSdk 35
+
+    defaultConfig {
+        applicationId 'com.example.mininsmqtrainer'
+        minSdk 23
+        targetSdk 35
+        versionCode 1
+        versionName '1.0'
+    }
+}
+""")
+
+(project / "app/src/main/AndroidManifest.xml").write_text("""<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <application
+        android:theme="@style/AppTheme"
+        android:label="Mini NSMQ Trainer"
+        android:allowBackup="true"
+        android:supportsRtl="true">
+        <activity
+            android:name=".MainActivity"
+            android:screenOrientation="portrait"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+    </application>
+</manifest>
+""")
+
+(project / "app/src/main/res/values/styles.xml").write_text("""<resources>
+    <style name="AppTheme" parent="android:style/Theme.Material.Light.NoActionBar">
+        <item name="android:fontFamily">sans</item>
+        <item name="android:colorAccent">#111827</item>
+        <item name="android:navigationBarColor">#f4f6f8</item>
+        <item name="android:statusBarColor">#f4f6f8</item>
+        <item name="android:windowLightStatusBar">true</item>
+    </style>
+</resources>
+""")
+
+(project / "app/src/main/java/com/example/mininsmqtrainer/MainActivity.java").write_text("""package com.example.mininsmqtrainer;
+
+import android.app.Activity;
+import android.os.Bundle;
+import android.webkit.WebSettings;
+import android.webkit.WebView;
+import android.webkit.WebViewClient;
+
+public class MainActivity extends Activity {
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+
+        WebView webView = new WebView(this);
+        webView.setWebViewClient(new WebViewClient());
+
+        WebSettings settings = webView.getSettings();
+        settings.setJavaScriptEnabled(true);
+        settings.setDomStorageEnabled(true);
+        settings.setBuiltInZoomControls(false);
+        settings.setDisplayZoomControls(false);
+
+        webView.loadUrl("file:///android_asset/index.html");
+        setContentView(webView);
+    }
+}
+""")
+
+zip_path = Path("/mnt/data/MiniNSMQTrainerAndroidProject.zip")
+if zip_path.exists():
+    zip_path.unlink()
+
+with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as z:
+    for p in project.rglob("*"):
+        if p.is_file():
+            z.write(p, p.relative_to(project))
+
+print(zip_path)
+                                                               
